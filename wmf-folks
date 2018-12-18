@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+wmf-folks
+~~~~~~~~~
+A naïve attempt to answer the burning question: *exactly* how many
+people work at the Wikimedia Foundation now?
+"""
+import os
+
+import requests
+
+from bs4 import BeautifulSoup
+
+WEBSITE_BASE = 'https://wikimediafoundation.org'
+STAFF_PAGE = os.path.join(WEBSITE_BASE, 'role', 'staff-contractors/')
+PROFILE_PAGE = os.path.join(WEBSITE_BASE, 'profile/')
+
+r = requests.get(STAFF_PAGE)
+r.raise_for_status()
+
+folks = set()
+
+soup = BeautifulSoup(r.text, 'html.parser')
+
+for a in soup.find_all(attrs={'class': 'staff-list-item'}):
+    person = a.text.strip().split('\n')[0]
+    folks.add(person.strip().encode('utf-8'))
+
+print('{} WMF folks\n---'.format(len(folks)))
+print('\n'.join(sorted(folks)))
