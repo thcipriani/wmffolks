@@ -12,9 +12,7 @@ import requests
 
 from bs4 import BeautifulSoup
 
-WEBSITE_BASE = 'https://wikimediafoundation.org'
-STAFF_PAGE = os.path.join(WEBSITE_BASE, 'role', 'staff-contractors/')
-PROFILE_PAGE = os.path.join(WEBSITE_BASE, 'profile/')
+STAFF_PAGE = 'https://wikimediafoundation.org/role/staff-contractors/'
 
 r = requests.get(STAFF_PAGE)
 r.raise_for_status()
