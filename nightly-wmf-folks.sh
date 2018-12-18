@@ -6,3 +6,4 @@ python "${BASEDIR}/wmf-folks" > "${BASEDIR}/README"
 git add --all
 git commit --quiet -m "$(date -I)"
 git gc --quiet --auto
+git push https://github.com/thcipriani/wmffolks.git master
