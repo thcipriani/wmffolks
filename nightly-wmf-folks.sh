@@ -3,7 +3,7 @@
 BASEDIR="$(dirname $(readlink -f $0))"
 
 python "${BASEDIR}/wmf-folks" > "${BASEDIR}/README"
-git add --all
-git commit --quiet -m "$(date -I)"
-git gc --quiet --auto
-git push https://github.com/thcipriani/wmffolks.git master
+git -C "${BASEDIR}" add --all
+git -C "${BASEDIR}" commit --quiet -m "$(date -I)"
+git -C "${BASEDIR}" gc --quiet --auto
+git -C "${BASEDIR}" push https://github.com/thcipriani/wmffolks.git master
