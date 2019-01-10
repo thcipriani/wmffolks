@@ -67,14 +67,37 @@ def folks_at(date):
     folks = set()
 
     soup = BeautifulSoup(r.text, 'html.parser')
-    for l in soup.find_all(attrs={'class': 'gallerybox'}):
-        person = l.attrs['id']
-        folks.add(person.strip())
 
-    ret = '{} WMF folks'.format(len(folks))
-    ret += ' (as of {})'.format(closest_page['timestamp'])
-    ret += '\n---\n'
+    # This is probably still imperfect.
+    #
+    # The idea is to go over the page twice.
+    #
+    # Manager/Director types on the old staff page weren't in gallery
+    # boxes, but mostly had user pages.
+    #
+    # Some folks in galleryboxes didn't have user pages.
+    #
+    # The set of folks with user pages OR in gallery boxes should be everybody
+    # who was a staff or contractor including director-type-folks ¯\_(ツ)_/¯
+    for div in soup.select('.gallerybox > div'):
+        try:
+            folks.add([x for x in div.children][3].text.strip())
+        except:
+            continue
+
+    for a in soup.find_all('a'):
+        try:
+            href = a['href']
+        except KeyError:
+            continue
+        if 'User:' not in href:
+            continue
+        folks.add(a.text.strip())
+
+    ret = '{} WMF folks\n---'.format(len(folks))
+    ret += '\n'
     ret += '\n'.join(sorted(folks))
+
     return ret
 
 if __name__ == '__main__':
