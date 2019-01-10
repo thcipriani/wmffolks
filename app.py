@@ -6,11 +6,6 @@ wmf-folks
 A naïve attempt to answer the burning question: *exactly* how many
 people work at the Wikimedia Foundation now?
 """
-import os
-
-import requests
-
-from bs4 import BeautifulSoup
 import wmffolks
 
 from bottle import route, run, response
