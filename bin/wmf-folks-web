@@ -13,12 +13,12 @@ from bottle import route, run, response
 @route('/')
 def current_folks():
     response.content_type = 'text/plain; charset=utf-8'
-    return wmffolks.current_folks()
+    return wmffolks.format_folks(wmffolks.at_date('now'))
 
 # YYYYMMdd
 @route('/<date:re:20(0|1)[0-9]{5}>')
 def folks_at(date):
     response.content_type = 'text/plain; charset=utf-8'
-    return wmffolks.folks_at(date)
+    return wmffolks.format_folks(wmffolks.at_date(date))
 
 run(host='localhost', port=8080, debug=True)

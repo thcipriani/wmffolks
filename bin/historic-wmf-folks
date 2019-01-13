@@ -5,7 +5,7 @@ import argparse
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('date', type=int)
+    ap.add_argument('date')
     args = ap.parse_args()
 
-    print(wmffolks.folks_at(args.date))
+    print(wmffolks.format_folks(wmffolks.at_date(args.date)))

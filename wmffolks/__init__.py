@@ -7,98 +7,127 @@ A naïve attempt to answer the burning question: *exactly* how many
 people work at the Wikimedia Foundation now?
 """
 import os
-
-import requests
+from datetime import datetime
 
 from bs4 import BeautifulSoup
+from dateutil.parser import parse
+import requests
 
-CURRENT_STAFF_PAGE = 'https://wikimediafoundation.org/role/staff-contractors/'
-ARCHIVE_ORG_AVAILABLE_API = 'http://archive.org/wayback/available?url='
-OLD_STAFF_PAGE = 'https://wikimediafoundation.org/wiki/Staff_and_Contractors'
 
-def _get_closest_archive_page(date):
+class FolksFinder(object):
     """
-    Find the closest archived page for a given date
-
-    :date: YYYYMMDD
+    Base folksfinder
     """
-    r = requests.get('{}{}&timestamp={}'.format(
-        ARCHIVE_ORG_AVAILABLE_API, OLD_STAFF_PAGE, date))
-    if r.status_code != requests.codes.ok:
-        return False
-    old_page_json = r.json()
-    if not old_page_json['archived_snapshots']:
-        return False
-    return old_page_json['archived_snapshots']['closest']
+    def __init__(self, date):
+        self.date = date
+        self.url = 'https://wikimediafoundation.org/role/staff-contractors/'
+        self.page = self._fetch_page()
+        self.folks = self._parse_page()
+
+    def _fetch_page(self):
+        raise NotImplementedError()
+    def _parse_page(self):
+        raise NotImplementedError()
 
 
-def current_folks():
+class CurrentFolksFinder(FolksFinder):
     """
-    Count up the folks on the current staff page
+    Scrape the current staff page for folks
     """
-    r = requests.get(CURRENT_STAFF_PAGE)
-    if r.status_code != requests.codes.ok:
-        return False
-    folks = set()
+    def _fetch_page(self):
+        r = requests.get(self.url)
+        if r.status_code != requests.codes.ok:
+            return False
 
-    soup = BeautifulSoup(r.text, 'html.parser')
+        return BeautifulSoup(r.text, 'html.parser')
 
-    for a in soup.find_all(attrs={'class': 'staff-list-item'}):
-        person = a.text.strip().split('\n')[0]
-        folks.add(person.strip())
+    def _parse_page(self):
+        if not self.page:
+            return self.page
 
-    ret = '{} WMF folks\n---'.format(len(folks))
-    ret += '\n'
-    ret += '\n'.join(sorted(folks))
-    return ret
+        folks = set()
+        for a in self.page.find_all(attrs={'class': 'staff-list-item'}):
+            person = a.text.strip().split('\n')[0]
+            folks.add(person.strip())
+
+        return folks
 
 
-def folks_at(date):
+class TemplateFolksFinder(FolksFinder):
+    """
+    We used the staff template in 2010-08-18 all the way through 2018-07-31
+    """
+    def _fetch_page(self):
+        params = {
+            'titles': 'Template:Staff_and_contractors',
+            'action': 'query',
+            'prop': 'revisions',
+            'rvprop': 'content',
+            'rvslots': 'main',
+            'formatversion': 2,
+            'format': 'json',
+            'rvstart': self.date.strftime('%Y%m%d000000')
+        }
+        r = requests.get('https://foundation.wikimedia.org/w/api.php', params=params)
+        if r.status_code != requests.codes.ok:
+            return False
+
+        return r.json()
+
+    def _parse_page(self):
+        if not self.page:
+            return self.page
+
+        folks = set()
+
+        revisions = self.page['query']['pages'][0]['revisions']
+        content = revisions[0]['slots']['main']['content']
+
+        for line in content.splitlines():
+            if ('=' in line and
+                    (line.startswith('| name ') or line.startswith('| head'))):
+                folks.add(line.split('=')[-1].strip().split('|')[-1].rstrip('}]'))
+
+        return folks
+
+
+def at_date(date):
     """
     Parse the closest page to a given start date to find number of folks who worked here
     :date: YYYYMMDD
     """
-    closest_page = _get_closest_archive_page(date)
-    if not closest_page:
-        return False
-    r = requests.get(closest_page['url'])
-    if r.status_code != requests.codes.ok:
-        return False
-    folks = set()
+    if not date or date == 'now':
+        date = datetime.utcnow()
+    else:
+        date = parse(date)
 
-    soup = BeautifulSoup(r.text, 'html.parser')
+    if ((date.year == 2018 and date.month > 8) or
+            (date.year > 2018)):
+        folk_finder = CurrentFolksFinder(date)
 
-    # This is probably still imperfect.
-    #
-    # The idea is to go over the page twice.
-    #
-    # Manager/Director types on the old staff page weren't in gallery
-    # boxes, but mostly had user pages.
-    #
-    # Some folks in galleryboxes didn't have user pages.
-    #
-    # The set of folks with user pages OR in gallery boxes should be everybody
-    # who was a staff or contractor including director-type-folks ¯\_(ツ)_/¯
-    for div in soup.select('.gallerybox > div'):
-        try:
-            folks.add([x for x in div.children][3].text.strip())
-        except:
-            continue
+    if ((date.year == 2018 and date.month < 8) or
+            (date.year == 2010 and date.month == 8 and date.day > 18) or
+            (date.year == 2010 and date.month > 8) or
+            (date.year < 2018 and date.year > 2010)):
+        folk_finder = TemplateFolksFinder(date)
 
-    for a in soup.find_all('a'):
-        try:
-            href = a['href']
-        except KeyError:
-            continue
-        if 'User:' not in href:
-            continue
-        folks.add(a.text.strip())
+    if not folk_finder:
+        raise RuntimeError('No scrapper for that date :(\nPull requests welcome though')
 
+    return folk_finder.folks
+
+
+def format_folks(folks):
+    """
+    Make printable output from folks set
+
+    :folks: set of names
+    """
     ret = '{} WMF folks\n---'.format(len(folks))
     ret += '\n'
     ret += '\n'.join(sorted(folks))
-
     return ret
 
+
 if __name__ == '__main__':
-    print(current_folks())
+    print(format_folks(at_date('now')))
