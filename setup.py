@@ -8,9 +8,7 @@ setup(
     packages=find_packages(),
     scripts=[
         'bin/historic-wmf-folks',
-        'bin/historic-wmf-folks-git-repo',
         'bin/wmf-folks',
-        'bin/wmf-folks-nightly',
         'bin/wmf-folks-web',
     ],
 
