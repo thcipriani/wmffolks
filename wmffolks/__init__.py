@@ -46,6 +46,33 @@ class CurrentFolksFinder(FolksFinder):
             return self.page
 
         folks = set()
+        for a in self.page.find_all(attrs={'class': 'role__staff-list__item'}):
+            person = a.text.strip().split('\n')[0]
+            folks.add(person.strip())
+
+        return folks
+
+
+class OlderCurrentFolksFinder(FolksFinder):
+    """
+    Scrape the current staff page for folks
+    """
+    def __init__(self, date):
+        self.url = 'TODO'
+        raise NotImplementedError('I have some work to do with the archive.org API')
+
+    def _fetch_page(self):
+        r = requests.get(self.url)
+        if r.status_code != requests.codes.ok:
+            return False
+
+        return BeautifulSoup(r.text, 'html.parser')
+
+    def _parse_page(self):
+        if not self.page:
+            return self.page
+
+        folks = set()
         for a in self.page.find_all(attrs={'class': 'staff-list-item'}):
             person = a.text.strip().split('\n')[0]
             folks.add(person.strip())
@@ -101,9 +128,13 @@ def at_date(date):
     else:
         date = parse(date)
 
-    if ((date.year == 2018 and date.month > 8) or
-            (date.year > 2018)):
+    if ((date.year == 2021 and date.month >= 9) or
+            (date.year > 2021)):
         folk_finder = CurrentFolksFinder(date)
+
+    if ((date.year == 2018 and date.month > 8) or
+            (date.year <= 2021 and date.month < 9)):
+        folk_finder = OlderCurrentFolksFinder(date)
 
     if ((date.year == 2018 and date.month < 8) or
             (date.year == 2010 and date.month == 8 and date.day > 18) or
